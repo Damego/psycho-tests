@@ -1,0 +1,103 @@
+body {
+  background: linear-gradient(#D0EEFF, #D7D2FF) fixed;
+  /* url("pattern.png"),  */
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.inputSearch {
+  --box-shadow-color: #638EFF; /* Declaring the variable */
+    box-shadow: 0px 0px 7px var(--box-shadow-color) !important;
+}
+
+.buttonSearch {
+  --box-shadow-color: #FFFFFF; /* Declaring the variable */
+  box-shadow: 0px 0px 7px var(--box-shadow-color) !important;
+}
+
+.buttonSearch:hover {
+  background-color: white !important;
+  opacity: 80%;
+}
+
+.buttonIcon:hover {
+  background-color: white !important;
+  opacity: 80%;
+}
+
+.containerQuestion {
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+  /* ! */
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.containerSection {
+  margin-top: 12px;
+  column-count: 1;
+  column-gap: 48px;
+}
+
+@media (min-width: 810px) {
+  .containerQuestion {
+    margin-top: 12px;
+    display: grid;
+    gap: 6px;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .containerSection {
+    margin-top: 12px;
+    column-count: 2;
+    column-gap: 48px;
+  }
+}
+
+@media (min-width: 1240px) {
+  .containerQuestion {
+    margin-top: 12px;
+    display: grid;
+    gap: 6px;
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.itemQuestion {
+  --box-shadow-color: #FFFFFF; /* Declaring the variable */
+  box-shadow: 0px 0px 7px var(--box-shadow-color) !important;
+  border: 3px solid #FFFFFF;
+  border-radius: 4px;
+  display: flex;
+  overflow-wrap: break-word;
+  word-breaK:break-word;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10% 5% 10% 5%;
+}
+
+.itemSection {
+  width: 100%;
+  display: inline-block;
+  box-sizing: border-box;
+  margin-bottom: 24px;
+}
+
+.itemNameSection {
+  padding-left: 2%;
+  border-radius: 4px;
+  display: flex;
+  overflow-wrap: break-word;
+  word-breaK:break-word;
+  align-items: center;
+  margin-bottom: 1%;
+  --box-shadow-color: #FFFFFF; /* Declaring the variable */
+  box-shadow: 0px 0px 7px var(--box-shadow-color) !important;
+  border: 2px solid #FFFFFF;
+}
+
+.highlight-text {
+  color: #638EFF;
+}
