@@ -7,10 +7,11 @@ from sqlalchemy.orm import DeclarativeBase, mapped_column
 
 int_pk = Annotated[int, mapped_column(primary_key=True)]
 str_128 = Annotated[str, 128]
-
+str_32 = Annotated[str, 32]
+str_16 = Annotated[str, 16]
 
 class BaseTable(DeclarativeBase):
-    type_annotation_map = {str_128: String(128)}
+    type_annotation_map = {str_128: String(128), str_32: String(32), str_16: String(16)}
 
     @abstractmethod
     def to_schema_model(self, **kwargs: bool) -> BaseModel:

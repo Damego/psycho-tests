@@ -1,14 +1,14 @@
-import datetime
-from src.models.schemas.create import TestCreate, UserTestResultCreate
-from src.models.schemas.tests import TestQuestion, TestQuestionAnswer, TestResult, TestSchema
-from src.models.schemas.update import TestUpdate
+from src.models.enums import TestStatus
+from src.models.schemas.tests import CreateTagSchema, CreateTestQuestionAnswerSchema, CreateTestQuestionSchema, CreateTestResultSchema, TagSchema, TestQuestionSchema, TestQuestionAnswerSchema, TestResultSchema, TestSchema, CreateTestSchema
+from src.models.schemas.update import UpdateTagSchema, UpdateTestQuestionSchema, UpdateTestQuestionAnswerSchema, UpdateTestResultSchema, UpdateTestSchema
 from src.repositories.tests_repository import (
     TestQuestionAnswerRepository,
     TestQuestionRepository,
     TestResultRepository,
     TestRepository,
     UserTestResultRepository,
-    UserTestAnswerRepository
+    TagsRepository,
+    TestsTagsRepository
 )
 
 
@@ -19,128 +19,99 @@ class TestsService:
         self.test_result_repo = TestResultRepository()
         self.test_repo = TestRepository()
         self.user_test_result_repo = UserTestResultRepository()
-        self.user_test_answer_repo = UserTestAnswerRepository()
+        # self.user_test_answer_repo = UserTestAnswerRepository()
+        self.tags_repo = TagsRepository()
+        self.tests_tags_repo = TestsTagsRepository()
+    
+    # Теги
+    
+    async def get_tags(self) -> list[TagSchema]:
+        return await self.tags_repo.get_all()
 
+    async def add_tag(self, payload: CreateTagSchema) -> TagSchema:
+        return await self.tags_repo.add_one(payload.model_dump())
+    
+    async def update_tag(self, tag_id: int, payload: UpdateTagSchema) -> TagSchema:
+        return await self.tags_repo.update_by_id(tag_id, payload.model_dump(exclude_none=True))
+    
+    async def delete_tag(self, tag_id: int) -> None:
+        return await self.tags_repo.remove_by_id(tag_id)
+
+    # Тесты
+    
     async def get_test_list(self) -> list[TestSchema]:
         return await self.test_repo.get_all()
     
     async def get_test_by_id(self, id: int) -> TestSchema:
         return await self.test_repo.get_by_id(id)
+    
+    async def get_tests_by_tag(self, tag_ids: list[int]):
+        ...
 
-    async def add_test(self, create: TestCreate):
-        test_payload = create.model_dump(exclude={"questions", "results"}, exclude_none=True)
-        test = await self.test_repo.add_one(test_payload)
+    async def add_test(self, payload: CreateTestSchema):
+        test_payload = payload.model_dump()
+        test_payload["status"] = TestStatus.DRAFT
 
-        for question_create in create.questions:
-            question_payload = question_create.model_dump(exclude={"answers"}, exclude_none=True)
-            question = await self.test_question_repo.add_one({**question_payload, "test_id": test.id})
+        return await self.test_repo.add_one(test_payload)
 
-            answers_payloads = [
-                {**ac.model_dump(exclude_none=True), "test_question_id": question.id} for ac in question_create.answers
-            ]
-            await self.test_question_answer_repo.add_many(answers_payloads)
-
-        await self.__add_results(test.id, create.results)
-
-    async def __add_results(self, test_id: int, results: list[TestResult]):
-        results_payloads = [
-            {**rc.model_dump(exclude_none=True), "test_id": test_id} for rc in results
-        ]
-        await self.test_result_repo.add_many(results_payloads)
-
-    async def __add_question(self, test_id: int, question: TestQuestionAnswer):
-        question_payload = question.model_dump(exclude={"answers"}, exclude_none=True)
-        return await self.test_question_repo.add_one({**question_payload, "test_id": test_id})
-
-    async def __delete_question(self, question_id: int):
-        await self.test_question_repo.remove_by_id(question_id)
-
-    async def __add_answers(self, question_id: int, answers: list[TestQuestionAnswer]):
-        answers_payloads = [
-                {**ac.model_dump(exclude_none=True), "test_question_id": question_id} for ac in answers
-            ]
-        await self.test_question_answer_repo.add_many(answers_payloads)
-
-    async def __update_answer(self, answer: TestQuestionAnswer):
-        answer_payload = answer.model_dump(exclude={"id", "test_question_id"}, exclude_none=True)
-        await self.test_question_answer_repo.update_by_id(answer.id, answer_payload)
-
-    async def __delete_answer(self, answer_id: int):
-        await self.test_question_answer_repo.remove_by_id(answer_id)
-
-    async def __update_question(self, question: TestQuestion):
-        question_payload = question.model_dump(exclude={"id", "answers", "test_id"}, exclude_none=True)
-        await self.test_question_repo.update_by_id(question.id, question_payload)
-
-    async def update_test(self, id: int, update: TestUpdate):
-        print(update.model_dump_json())
-        test_payload = update.model_dump(exclude={"id", "questions", "results"}, exclude_none=True)
-        await self.test_repo.update_by_id(id, test_payload)
-        test: TestSchema = await self.test_repo.get_by_id(id)
-
-        for question_update in update.questions:
-            if question_update.id is not None:
-                await self.__update_question(question_update)
-
-                for answer_update in question_update.answers:
-                    if answer_update.id is not None:
-                        await self.__update_answer(answer_update)
-                new_answers = list(filter(lambda ans: ans.id is None, question_update.answers))
-                if new_answers:
-                        await self.__add_answers(question_update.id, new_answers)
-
-                # Поиск удалённых из обновления ответов и удаление их из бд
-                question = next(filter(lambda q: q.id == question_update.id, test.questions)) 
-                if len(question.answers) > len(question_update.answers):
-                    old_answ = set(map(lambda q: q.id, question.answers))
-                    answ = set(map(lambda q: q.id, question_update.answers))
-                    to_remove = old_answ.difference(answ)
-                    for id in to_remove:
-                        await self.__delete_answer(id)
-            else:
-                question = await self.__add_question(test.id, question_update)
-                await self.__add_answers(question.id, question_update.answers)
-        
-        if len(test.questions) > len(update.questions):
-            old_quests = set(map(lambda q: q.id, test.questions))
-            quests = set(map(lambda q: q.id, update.questions))
-            to_remove = old_quests.difference(quests)
-            for id in to_remove:
-                await self.__delete_question(id)
-
-        for result_update in update.results:
-            if result_update.id:
-                result_payload = result_update.model_dump(exclude={"id", "test_id"}, exclude_none=True)
-                await self.test_result_repo.update_by_id(result_update.id, result_payload)
-
-        new_results = list(filter(lambda res: res.id is None, update.results))
-        if new_results:
-            await self.__add_results(test.id, new_results)
+    async def update_test(self, id: int, payload: UpdateTestSchema):
+        test_payload = payload.model_dump(exclude_none=True)
+        return await self.test_repo.update_by_id(id, test_payload)
 
     async def delete_test(self, id: int):
         await self.test_repo.remove_by_id(id)
 
-    async def add_user_test_result(self, create: UserTestResultCreate):
-        result_payload = create.model_dump(exclude={"answers"}, exclude_none=True)
-        user_test_result = await self.user_test_result_repo.add_one(result_payload)
-
-        answer_payloads = [{**a.model_dump(), "user_test_result_id": user_test_result.id} for a in create.answers]
-        await self.user_test_answer_repo.add_many(answer_payloads)
-
-        return await self.test_result_repo.get_test_result(user_test_result.id)
+    # Вопросы на тест
     
-    async def get_user_test_results(self, user_id: int):
-        # Это можно было бы сделать в одном запросе, но я чувствую, что у меня поедет крыша
+    async def get_test_questions(self, test_id: int):
+        return await self.test_question_repo.get_one(test_id=test_id)
 
-        user_test_result_list: list[TestResult] = await self.user_test_result_repo.get_many(user_id=user_id)
-        test_results = []
+    async def add_test_question(self, test_id: int, payload: CreateTestQuestionSchema):
+        data = payload.model_dump()
+        return await self.test_question_repo.add_one({"test_id": test_id, **data})
+    
+    async def update_test_question(self, question_id: int, payload: UpdateTestQuestionSchema):
+        data = payload.model_dump(exclude_none=True)
+        return await self.test_question_repo.update_by_id(question_id, data)
 
-        for user_test_result in user_test_result_list:
-            test_result = await self.test_result_repo.get_test_result(user_test_result.id)
-            test_result.test = await self.test_repo.get_by_id(user_test_result.test_id)
-            test_results.append(test_result)
+    async def delete_test_question(self, question_id: int):
+        return await self.test_question_repo.remove_by_id(question_id)
 
-        return test_results
+    # Ответы на вопрос теста
+    
+    async def get_test_question_answers(self, question_id: int):
+        return await self.test_question_answer_repo.get_many(question_id=question_id)
+    
+    async def add_test_answer_questions(self, question_id: int, payload: list[CreateTestQuestionAnswerSchema]):
+        data = [p.model_dump() for p in payload]
+        for d in data:
+            d["test_question_id"] = question_id
 
+        return await self.test_question_answer_repo.add_many(data)
+    
+    async def update_test_answer_question(self, answer_id: int, payload: UpdateTestQuestionAnswerSchema):
+        data = payload.model_dump(exclude_none=True)
+        return await self.test_question_answer_repo.update_by_id(answer_id, data)
+
+    async def delete_test_answer_question(self, answer_id: int):
+        return await self.test_question_answer_repo.remove_by_id(answer_id)
+    
+    # Результат теста
+    
+    async def get_test_results(self, test_id: int):
+        return await self.test_result_repo.get_many(test_id=test_id)
+    
+    async def add_test_results(self, test_id: int, payload: list[CreateTestResultSchema]):
+        data = [p.model_dump() for p in payload]
+        for d in data:
+            d["test_id"] = test_id
+        return await self.test_result_repo.add_many(data)
+
+    async def update_test_result(self, test_result_id: int, payload: UpdateTestResultSchema):
+        data = payload.model_dump(exclude_none=True)
+        return await self.test_result_repo.update_by_id(test_result_id, data)
+
+    async def delete_test_result(self, test_result_id: int):
+        return await self.test_result_repo.remove_by_id(test_result_id)
 
 

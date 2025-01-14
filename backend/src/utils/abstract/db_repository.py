@@ -41,7 +41,7 @@ class Repository(ABC):
         raise NotImplementedError
 
 
-class SQLAlchemyRepository(Repository):
+class SQLAlchemyRepository[SchemaT: BaseModel](Repository):
     table_model: Type[BaseTable] = None
     options: list[ExecutableOption] = []
 
@@ -59,7 +59,7 @@ class SQLAlchemyRepository(Repository):
         return await self.get_one(id=id)
 
     async def get_one(
-        self, *relationship: Optional[Any], **filter: Unpack[table_model]
+        self, *relationship: Optional[Any], **filter: Unpack[SchemaT]
     ) -> BaseModel | None:
         async with async_session_maker() as session:
             query = select(self.table_model).filter_by(**dict_filter_none(filter))
@@ -72,7 +72,7 @@ class SQLAlchemyRepository(Repository):
             return data.to_schema_model() if data else None
 
     async def get_many(
-        self, options: list[ExecutableOption] = None, **filter: Unpack[table_model]
+        self, options: list[ExecutableOption] = None, **filter: Unpack[SchemaT]
     ) -> list[BaseModel]:
         async with async_session_maker() as session:
             query = select(self.table_model).filter_by(**dict_filter_none(filter))
@@ -81,7 +81,7 @@ class SQLAlchemyRepository(Repository):
             result = await session.execute(query)
             return [table.to_schema_model() for table in result.scalars().all()]
 
-    async def add_one(self, data: dict) -> table_model:
+    async def add_one(self, data: dict) -> SchemaT:
         async with async_session_maker() as session:
             result = await session.execute(
                 insert(self.table_model).values(**data).returning(self.table_model)
@@ -114,12 +114,13 @@ class SQLAlchemyRepository(Repository):
             result = await session.execute(query)
             return [table.to_schema_model() for table in result.scalars().all()]
 
-    async def update_by_id(self, id: int, data: dict[str, Any]) -> None:
+    async def update_by_id(self, id: int, data: dict[str, Any]) -> SchemaT:
         async with async_session_maker() as session:
             query = (
                 update(self.table_model)
                 .filter_by(id=id)
                 .values(**dict_filter_none(data))
+                .returning(self.table_model)
             )
             await session.execute(query)
             await session.commit()

@@ -1,58 +1,73 @@
 from datetime import datetime
 from enum import IntEnum
-from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from src.models.enums import TestStatus
 
 
 class TestTypes(IntEnum):
     SINGLE_ANSWER_OPTION = 1
     TEXT_FIELD = 2
+    
+
+class CreateTagSchema(BaseModel):
+    name: str
+    
+
+class TagSchema(CreateTagSchema):
+    id: int
 
 
-class TestQuestionAnswer(BaseModel):
-    id: Optional[int] = Field(default=None)
-    test_question_id: Optional[int] = Field(default=None)
+class CreateTestQuestionAnswerSchema(BaseModel):
     answer: str
     points: int
 
 
-class TestQuestion(BaseModel):
-    id: Optional[int] = Field(default=None)
-    test_id: Optional[int] = Field(default=None)
+class TestQuestionAnswerSchema(CreateTestQuestionAnswerSchema):
+    id: int
+    test_question_id: int
+
+
+class CreateTestQuestionSchema(BaseModel):
     title: str
     type: TestTypes
 
-    answers: list[TestQuestionAnswer]
+
+class TestQuestionSchema(CreateTestQuestionSchema):
+    id: int
+    test_id: int
 
 
-class TestResult(BaseModel):
-    id: Optional[int] = Field(default=None)
-    test_id: Optional[int] = Field(default=None)
+class CreateTestResultSchema(BaseModel):
     min_points: int
     max_points: int
     content: str
 
-    test: Optional["TestSchema"] = Field(default=None)
 
-
-class TestSchema(BaseModel):
-    id: Optional[int] = Field(default=None)
-    name: str
-
-    questions: list[TestQuestion]
-    results: list[TestResult]
-
-
-class UserTestAnswer(BaseModel):
-    user_test_result_id: Optional[int] = Field(default=None)
-    question_id: int
-    answer_id: int
-
-
-class UserTestResultSchema(BaseModel):
-    id: Optional[int] = Field(default=None)
+class TestResultSchema(CreateTestResultSchema):
+    id: int
     test_id: int
+
+
+class CreateTestSchema(BaseModel):
+    name: str
+    author_user_id: int
+    description: str
+
+
+class TestSchema(CreateTestSchema):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+    status: TestStatus
+    
+
+class CompletedTestResultsSchema(BaseModel):
+    test_result_id: int
     user_id: int
     date: datetime
 
-    answers: list[UserTestAnswer]
+
+class TestUserCommentSchema(BaseModel):    
+    test_id: int
+    user_id: int
+    content: str
