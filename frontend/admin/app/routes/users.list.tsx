@@ -3,7 +3,7 @@ import React from "react";
 
 import { apiService } from "../../api/apiService";
 import { useLoaderData, useNavigate } from "@remix-run/react";
-import ModelTable from "../../components/ModelTable";
+import ModelTable from "../components/ModelTable";
 import { getTextUserPermissions } from "../../utils/texts";
 
 export async function loader() {

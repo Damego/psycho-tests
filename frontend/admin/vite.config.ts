@@ -8,7 +8,7 @@ installGlobals();
 export default defineConfig({
   plugins: [remix({ basename: "/admin/" }), tsconfigPaths()],
   ssr: {
-    noExternal: ["remix-utils"],
+    noExternal: [/^@mui\//],
   },
   base: "/admin/",
 });

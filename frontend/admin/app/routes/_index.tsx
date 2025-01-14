@@ -1,5 +1,4 @@
 import { MetaFunction, redirect } from "@remix-run/node";
-import "@mdxeditor/editor/style.css";
 import React from "react";
 import Page from "../../components/Page";
 
@@ -8,7 +7,7 @@ export const meta: MetaFunction = () => {
 };
 
 export async function loader() {
-  throw redirect("/categories/list")
+  throw redirect("/tests")
 }
 
 export default function Index() {
